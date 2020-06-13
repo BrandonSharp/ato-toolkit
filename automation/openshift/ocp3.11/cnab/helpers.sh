@@ -104,15 +104,60 @@ deploy_storage() {
     ${RESOURCE_PREFIX}diag ${RESOURCE_PREFIX}registry
 }
 
+create_bastion() {
+  public_ip_args=""
+
+  if [ ${USE_PUBLIC_IPS} == 'true' ]; then
+    az network public-ip create -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-bastion-ip
+    public_ip_args="--public-ip-address ${RESOURCE_PREFIX}-bastion-ip"
+  fi;
+  az network nic create -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-bastion-nic \
+    --vnet-name ${VIRTUAL_NETWORK} --subnet master --network-security-group ${RESOURCE_PREFIX}-bastion-nsg ${public_ip_args}   
+
+  az vm create -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-bastion -l ${AZURE_LOCATION} \
+    --admin-username ${ADMIN_USERNAME} --authentication-type ssh --ssh-key-values /cred/ssh/ocp.pub \
+    --size ${NODE_SIZE} --nics ${RESOURCE_PREFIX}-bastion-nic \
+    --boot-diagnostics-storage ${RESOURCE_PREFIX}diag \
+    --os-disk-name ${RESOURCE_PREFIX}-bastion-osdisk --os-disk-size-gb 64 \
+    --image "${VM_IMAGE_LOCATION}"
+  
+  # TODO: Make idempotent
+  az vm disk attach -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-bastion-dockerpool \
+    --size-gb 128 --sku Standard_LRS --new --vm-name ${RESOURCE_PREFIX}-bastion
+}
+
+create_masters() {
+  az vmss create -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-master-vmss \
+    --admin-username ${ADMIN_USERNAME} --authentication-type ssh --ssh-key-values /cred/ssh/ocp.pub \
+    --load-balancer ${RESOURCE_PREFIX}-masterlb --backend-pool-name loadBalancerBackEnd \
+    --vnet-name ${VIRTUAL_NETWORK} --subnet master --image ${VM_IMAGE_LOCATION} \
+    --instance-count ${MASTER_NODE_COUNT}
+}
+create_infras() {
+  az vmss create -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-infra-vmss \
+    --admin-username ${ADMIN_USERNAME} --authentication-type ssh --ssh-key-values /cred/ssh/ocp.pub \
+    --load-balancer ${RESOURCE_PREFIX}-infralb --backend-pool-name loadBalancerBackEnd \
+    --vnet-name ${VIRTUAL_NETWORK} --subnet master --image ${VM_IMAGE_LOCATION} \
+    --instance-count ${MASTER_NODE_COUNT}
+}
+create_nodes() {
+  az vmss create -g ${RESOURCE_GROUP} -n ${RESOURCE_PREFIX}-node-vmss \
+    --admin-username ${ADMIN_USERNAME} --authentication-type ssh --ssh-key-values /cred/ssh/ocp.pub \
+    --vnet-name ${VIRTUAL_NETWORK} --subnet nodes --image ${VM_IMAGE_LOCATION} \
+    --instance-count ${MASTER_NODE_COUNT}
+}
+
 deploy_vms() {
   fault_domain_count=2
   update_domain_count=0
 
-  parallel 'az vm availability-set create -g ${RESOURCE_GROUP} -n {} \
-      --platform-fault-domain-count 2' ::: \
-      ${RESOURCE_PREFIX}-master-as ${RESOURCE_PREFIX}-infra-as \
-      ${RESOURCE_PREFIX}-node-as ${RESOURCE_PREFIX}-cns-as
+  # parallel 'az vm availability-set create -g ${RESOURCE_GROUP} -n {} \
+  #     --platform-fault-domain-count 2' ::: \
+  #     ${RESOURCE_PREFIX}-master-as ${RESOURCE_PREFIX}-infra-as \
+  #     ${RESOURCE_PREFIX}-node-as ${RESOURCE_PREFIX}-cns-as
  
+  parallel '{}' ::: create_bastion create_masters create_nodes
+
 }
 
 

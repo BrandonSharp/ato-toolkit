@@ -31,16 +31,18 @@ install:
         - "-l {{ bundle.parameters.azure-location }}" 
         - "-n {{ bundle.parameters.azure-resource-group }}" 
 
-  - exec:
-      description: "Deploy networking"
-      command: ./helpers.sh
-      arguments:
-        - deploy_network
-  - exec:
-      description: "Deploy storage"
-      command: ./helpers.sh
-      arguments:
-        - deploy_storage
+  # - exec:
+  #     description: "Deploy networking"
+  #     command: ./helpers.sh
+  #     arguments:
+  #       - deploy_network
+
+  # - exec:
+  #     description: "Deploy storage"
+  #     command: ./helpers.sh
+  #     arguments:
+  #       - deploy_storage
+  
   - exec:
       description: "Deploy vms"
       command: ./helpers.sh
@@ -85,6 +87,9 @@ credentials:
   - name: redhat-subscription-password
     env: REDHAT_PASSWORD
 
+  - name: ssh-public-key
+    path: /cred/ssh/ocp.pub
+
 parameters:
   - name: resource-prefix
     type: string
@@ -100,6 +105,28 @@ parameters:
     type: boolean
     default: true
     env: USE_PUBLIC_IPS
+
+  - name: admin-username
+    type: string
+    default: ocpadmin
+    env: ADMIN_USERNAME
+
+  - name: node-size
+    type: string
+    default: Standard_DS2_v2
+    env: NODE_SIZE
+
+  - name: vm-image-location
+    type: string
+    default: "RedHat:RHEL:7-RAW:latest"
+    env: VM_IMAGE_LOCATION
+
+  - name: master-node-count
+    type: integer
+    default: 3
+    env: MASTER_NODE_COUNT
+    minimum: 1
+    maximum: 5
 
   # Azure
   - name: azure-location
