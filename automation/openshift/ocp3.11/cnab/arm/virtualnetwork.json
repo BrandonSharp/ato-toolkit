@@ -1,0 +1,150 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "vnetName": {
+        "type": "string",
+        "defaultValue": "OcpVNet",
+        "metadata": {
+          "description": "VNet name"
+        }
+      },
+      "vnetAddressPrefix": {
+        "type": "string",
+        "defaultValue": "10.0.0.0/16",
+        "metadata": {
+          "description": "Address prefix"
+        }
+      },
+      "masterInfraSubnetPrefix": {
+        "type": "string",
+        "defaultValue": "10.12.101.0/24",
+        "metadata": {
+          "description": "Master Infrastructure Subnet Prefix"
+        }
+      },
+      "nodeSubnetPrefix": {
+        "type": "string",
+        "defaultValue": "10.12.102.0/24",
+        "metadata": {
+          "description": "Node Subnet Prefix"
+        }
+      },
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Location for all resources."
+        }
+      },
+      "masterLoadBalancerName": {
+        "type": "string",
+        "defaultValue": "OcpMasterLB",
+        "metadata": {
+          "description": "Name of load balancer to create for master nodes"
+        }
+      },
+      "infraLoadBalancerName": {
+        "type": "string",
+        "defaultValue": "OcpInfraLB",
+        "metadata": {
+          "description": "Name of load balancer to create for infrastructure nodes"
+        }
+      },
+      "createPublicIps": {
+        "type": "bool",
+        "defaultValue": "true",
+        "metadata": {
+          "description": "Whether to deploy load balancers with public IP addresses"
+        }
+      },
+      "publicIpPrefix": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().name]",
+        "metadata": {
+          "description": "Prefix for any public IPs"
+        }
+      }
+
+    },
+    "variables": {
+      "masterInfraSubnetName": "MasterInfraSubnet",
+      "nodeSubnetName": "NodeSubnet",
+      "masterPublicIpName": "[concat( parameters('publicIpPrefix'), '-masterlb-ip')]",
+      "infrastructurePublicIpName": "[concat( parameters('publicIpPrefix'), '-infralb-ip')]"
+    },
+    "resources": [
+      {
+        "apiVersion": "2018-10-01",
+        "type": "Microsoft.Network/virtualNetworks",
+        "name": "[variables('vnetName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "addressSpace": {
+            "addressPrefixes": [
+              "[parameters('vnetAddressPrefix')]"
+            ]
+          }
+        },
+        "resources": [
+          {
+            "apiVersion": "2018-10-01",
+            "type": "subnets",
+            "location": "[parameters('location')]",
+            "name": "[variables('masterInfraSubnetName')]",
+            "dependsOn": [
+              "[parameters('vnetName')]"
+            ],
+            "properties": {
+              "addressPrefix": "[parameters('masterInfraSubnetPrefix')]"
+            }
+          },
+          {
+            "apiVersion": "2018-10-01",
+            "type": "subnets",
+            "location": "[parameters('location')]",
+            "name": "[parameters('nodeSubnetName')]",
+            "dependsOn": [
+              "[parameters('vnetName')]",
+              "[variables('masterInfraSubnetName')]"
+            ],
+            "properties": {
+              "addressPrefix": "[parameters('nodeSubnetPrefix')]"
+            }
+          }
+        ]
+      },
+      {
+        "apiVersion": "2020-03-01",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "condition": "[parameters('createPublicIps')]",
+        "name": "[variables('masterPublicIpName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic"
+        }
+      },
+      {
+        "apiVersion": "2020-03-01",
+        "type": "Microsoft.Network/publicIPAddresses",
+        "condition": "[parameters('createPublicIps')]",
+        "name": "[variables('infrastructurePublicIpName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "publicIPAllocationMethod": "Dynamic"
+        }
+      },
+      {
+        "apiVersion": "2020-03-01",
+        "name": "[parameters('masterLoadBalancerName')]",
+        "type": "Microsoft.Network/loadBalancers",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+          "Microsoft.Network/publicIPAddresses/[variables('masterPublicIpName')]"
+        ],
+        "properties": {
+
+        }
+      }
+    ]
+  }

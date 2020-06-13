@@ -1,0 +1,131 @@
+# This is the configuration for Porter
+# You must define steps for each action, but the rest is optional
+# See https://porter.sh/author-bundles for documentation on how to configure your bundle
+# Uncomment out the sections below to take full advantage of what Porter can do!
+
+name: Openshift3
+version: 0.1.0
+description: "An example Porter configuration"
+# TODO: update the registry to your own, e.g. myregistry/porter-hello:v0.1.0
+tag: getporter/porter-hello:v0.1.0
+
+# Uncomment the line below to use a template Dockerfile for your invocation image
+dockerfile: Dockerfile.tmpl
+
+mixins:
+  - exec
+  - arm
+  - az
+
+install:
+  - exec:
+      description: "Azure CLI Login"
+      command: ./helpers.sh
+      arguments:
+        - az_login
+
+  - az:
+      description: "Create resource group"
+      arguments:
+        - "group create" 
+        - "-l {{ bundle.parameters.azure-location }}" 
+        - "-n {{ bundle.parameters.azure-resource-group }}" 
+
+  - exec:
+      description: "Deploy networking"
+      command: ./helpers.sh
+      arguments:
+        - deploy_network
+  - exec:
+      description: "Deploy storage"
+      command: ./helpers.sh
+      arguments:
+        - deploy_storage
+  - exec:
+      description: "Deploy vms"
+      command: ./helpers.sh
+      arguments:
+        - deploy_vms
+
+
+upgrade:
+  - exec:
+      description: "World 2.0"
+      command: ./helpers.sh
+      arguments:
+        - upgrade
+
+uninstall:
+  - exec:
+      description: "Uninstall Hello World"
+      command: ./helpers.sh
+      arguments:
+        - uninstall
+
+
+# See https://porter.sh/author-bundles/#dependencies
+#dependencies:
+#  mysql:
+#    tag: getporter/mysql:v0.1.2
+#    parameters:
+#      database-name: wordpress
+
+credentials:
+  - name: TENANT_ID
+    env: AZURE_TENANT_ID
+  - name: SUBSCRIPTION_ID
+    env: AZURE_SUBSCRIPTION_ID
+  - name: CLIENT_ID
+    env: AZURE_CLIENT_ID
+  - name: CLIENT_SECRET
+    env: AZURE_CLIENT_SECRET
+
+  - name: redhat-subscription-username
+    env: REDHAT_USER
+  - name: redhat-subscription-password
+    env: REDHAT_PASSWORD
+
+parameters:
+  - name: resource-prefix
+    type: string
+    default: ocp3
+    env: RESOURCE_PREFIX
+
+  - name: virtual-network-name
+    type: string
+    default: OcpVNet
+    env: VIRTUAL_NETWORK
+
+  - name: use-public-ips
+    type: boolean
+    default: true
+    env: USE_PUBLIC_IPS
+
+  # Azure
+  - name: azure-location
+    type: string
+    # default: usgovvirginia
+    default: eastus
+    env: AZURE_LOCATION
+
+  - name: azure-cloud
+    type: string
+    default: "AZUREPUBLICCLOUD"
+    env: ENVIRONMENT
+    enum:
+      - "AZUREPUBLICCLOUD"
+      - "AZUREUSGOVERNMENTCLOUD"
+
+  - name: azure-resource-group
+    type: string
+    default: "ocp3"
+    env: RESOURCE_GROUP
+
+  - name: master-lb-private-ip
+    type: string
+    default: ""
+    env: MASTER_LB_PRIVATE_IP
+  - name: infra-lb-private-ip
+    type: string
+    default: ""
+    env: INFRA_LB_PRIVATE_IP
