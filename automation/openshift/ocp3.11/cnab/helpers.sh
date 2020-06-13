@@ -56,17 +56,17 @@ deploy_network() {
 
   # Load balancer rules
   az network lb rule create -g ${RESOURCE_GROUP} -n OpenShiftAdminConsole \
-      --lb-name ${masterlbName} --probe-name httpsProbe --protocol tcp
-      --frontend-port 443 --backend-port 443 --backend-pool-name loadBalancerBackEnd
+      --lb-name ${masterlbName} --probe-name httpsProbe --protocol tcp \
+      --frontend-port 443 --backend-port 443 --backend-pool-name loadBalancerBackEnd \
       --load-distribution SourceIP --idle-timeout 30
 
   az network lb rule create -g ${RESOURCE_GROUP} -n OpenShiftRouterHTTPS \
-      --lb-name ${infralbName} --probe-name httpsProbe --protocol tcp
-      --frontend-port 443 --backend-port 443 --backend-pool-name loadBalancerBackEnd
+      --lb-name ${infralbName} --probe-name httpsProbe --protocol tcp \
+      --frontend-port 443 --backend-port 443 --backend-pool-name loadBalancerBackEnd \
       --load-distribution SourceIP --idle-timeout 30
   az network lb rule create -g ${RESOURCE_GROUP} -n OpenShiftRouterHTTP \
-      --lb-name ${infralbName} --probe-name httpProbe --protocol tcp
-      --frontend-port 80 --backend-port 80 --backend-pool-name loadBalancerBackEnd
+      --lb-name ${infralbName} --probe-name httpProbe --protocol tcp \
+      --frontend-port 80 --backend-port 80 --backend-pool-name loadBalancerBackEnd \
       --load-distribution SourceIP --idle-timeout 30
 
   # NSG rules
